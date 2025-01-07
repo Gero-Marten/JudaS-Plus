@@ -14,9 +14,9 @@ developed independently from JudaS and are available online.
 
   * #### Self-Learning
 
-JudaS implements a persisted learning algorithm, managing a file named experience.bin.
+JudaS implements a persisted learning algorithm, managing a file named JudaS.exp.
 
-It is a collection of one or more positions stored with the following format (similar to in memory Brainlearn Transposition Table):
+It is a collection of one or more positions stored with the following format (similar to in memory JudaS ++ Transposition Table):
 
 - _best move_
 - _board signature (hash key)_
@@ -24,7 +24,7 @@ It is a collection of one or more positions stored with the following format (si
 - _best move score_
 - _best move performance_ , a new parameter you can calculate with any learning application supporting this specification.
 This file is loaded in an hashtable at the engine load and updated each time the engine receive quit or stop uci command.
-When BrainLearn starts a new game or when we have max 8 pieces on the chessboard, the learning is activated and the hash table updated each time the engine has a best score
+When JudaS ++ starts a new game or when we have max 8 pieces on the chessboard, the learning is activated and the hash table updated each time the engine has a best score
 at a depth >= 4 PLIES, according to JudaS aspiration window.
 
   * #### CTG/BIN Book File
