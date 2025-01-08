@@ -38,13 +38,12 @@
 #include "ucioption.h"
 
 namespace Judas {
-	
+
 // Enumeration for game styles
-enum GameStyle { Default, Aggressive, Defensive, Positional };
+enum GameStyle { Off, Default, Aggressive, Defensive, Positional };
 
 // Global variables for managing style and dynamic behavior
 extern GameStyle style;            // Current game style
-
 
 class Engine {
    public:

@@ -117,22 +117,28 @@ Engine::Engine(std::optional<std::string> path) :
     options["SyzygyProbeDepth"] << Option(1, 1, 100);
     options["Syzygy50MoveRule"] << Option(true);
     options["SyzygyProbeLimit"] << Option(7, 0, 7);
-options["Select Style"] << Option("Off var Default var Aggressive var Defensive var Positional", "Default",
+
+options["Select Style"] << Option(
+    "Default var Default var Aggressive var Defensive var Positional", "Default", // Default value
     [](const Option& o) -> std::optional<std::string> {
-        if (o == "Aggressive") style = Aggressive;
-        else if (o == "Defensive") style = Defensive;
-        else if (o == "Positional") style = Positional;
-        else style = Default;
+        std::string selectedStyle = static_cast<std::string>(o);
+
+        if (selectedStyle == "Aggressive") {
+            style = Aggressive;
+        } else if (selectedStyle == "Defensive") {
+            style = Defensive;
+        } else if (selectedStyle == "Positional") {
+            style = Positional;
+        } else {
+            style = Default;
+        }
 
         // Send a message to the GUI using the UCI command "info string"
-        sync_cout << "info string Style set to: "
-                  << (style == Aggressive ? "Aggressive"
-                  : style == Defensive ? "Defensive"
-                  : style == Positional ? "Positional"
-                  : "Default") << sync_endl;
+        sync_cout << "info string Style set to: " << selectedStyle << sync_endl;
 
-        return std::nullopt;
+        return std::optional<std::string>{};
     });
+
 options["Exploration Mode"] << Option("Off var On var Off", "Off",
     [](const Option& o) -> std::optional<std::string> {
         if (o == "On")
