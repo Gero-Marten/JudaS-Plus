@@ -118,9 +118,9 @@ Engine::Engine(std::optional<std::string> path) :
     options["Syzygy50MoveRule"] << Option(true);
     options["SyzygyProbeLimit"] << Option(7, 0, 7);
 
-options["Select Style"] << Option(
-    "Default var Default var Aggressive var Defensive var Positional", "Default", // Default value
-    [](const Option& o) -> std::optional<std::string> {
+    options["Select Style"] << Option(
+        "Default var Default var Aggressive var Defensive var Positional", "Default", // Default value
+        [](const Option& o) -> std::optional<std::string> {
         std::string selectedStyle = static_cast<std::string>(o);
 
         if (selectedStyle == "Aggressive") {
@@ -139,8 +139,8 @@ options["Select Style"] << Option(
         return std::optional<std::string>{};
     });
 
-options["Exploration Mode"] << Option("Off var On var Off", "Off",
-    [](const Option& o) -> std::optional<std::string> {
+    options["Exploration Mode"] << Option("Off var On var Off", "Off",
+        [](const Option& o) -> std::optional<std::string> {
         if (o == "On")
             explorationEnabled = true;
         else
