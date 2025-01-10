@@ -255,27 +255,30 @@ if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.p
                       << " learning moves." << std::endl;
         }
 
+
         if (!learningMoves.empty())
         {
             LD.sortLearningMoves(learningMoves);
 
             std::vector<LearningMove*> bestMoves;
             Depth bestDepth = learningMoves[0]->depth;
+
             if (bestDepth >= expBookMinDepth)
             {
                 int bestPerformance = learningMoves[0]->performance;
                 Value bestScore = learningMoves[0]->score;
 
                 if ((bool)options["Experience Book Logging"]) {
-                    std::cout << "info string Filtered best moves based on performance and score"
+                    std::cout << "info string Filtering moves based on performance >= 30 and score..."
                               << std::endl;
                 }
 
-                if (bestPerformance >= 50)
+                // Reduced minimum performance threshold
+                if (bestPerformance >= 30)
                 {
                     for (const auto& move : learningMoves)
                     {
-                        if (move->depth == bestDepth && move->performance == bestPerformance
+                        if (move->depth == bestDepth && move->performance >= 30
                             && move->score == bestScore)
                         {
                             bestMoves.push_back(move);
@@ -286,10 +289,10 @@ if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.p
                         }
                     }
 
-                    if ((bool)options["Experience Book Logging"]) {
+                if ((bool)options["Experience Book Logging"]) {
                         std::cout << "info string Filtered " << bestMoves.size()
                                   << " best moves from experience book." << std::endl;
-                    }
+                }
 
                     // Random selection from the best moves
                     if (!bestMoves.empty())
@@ -338,6 +341,7 @@ if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.p
     }
 }
 
+// If no move has been selected, start the search
 if (!bookMove && think)
 {
     threads.start_searching();  // start non-main threads
