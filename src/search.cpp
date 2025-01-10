@@ -235,68 +235,115 @@ void Search::Worker::start_searching() {
     else
     {
 
-        bool think = true;
-        if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.perft)
-            && !main_manager()->ponder)
+bool think = true;
+if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.perft)
+    && !main_manager()->ponder)
+{
+    // Probe the configured books
+    bookMove = bookMan.probe(rootPos, options);
+
+    // Probe experience book begin
+    if (bookMove == Move::none() && (bool)options["Experience Book"]
+        && rootPos.game_ply() / 2 < (int)options["Experience Book Max Moves"])
+    {
+        Depth expBookMinDepth = (Depth)options["Experience Book Min Depth"];
+        std::vector<LearningMove*> learningMoves = LD.probe(rootPos.key());
+
+        if ((bool)options["Experience Book Logging"]) {
+            std::cout << "info string Probing experience book..." << std::endl;
+            std::cout << "info string Found " << learningMoves.size()
+                      << " learning moves." << std::endl;
+        }
+
+        if (!learningMoves.empty())
         {
-            //Probe the configured books
-            bookMove = bookMan.probe(rootPos, options);
-            //Probe experience book begin
-            if (bookMove == Move::none() && (bool) options["Experience Book"]
-                && rootPos.game_ply() / 2 < (int) options["Experience Book Max Moves"])
+            LD.sortLearningMoves(learningMoves);
+
+            std::vector<LearningMove*> bestMoves;
+            Depth bestDepth = learningMoves[0]->depth;
+            if (bestDepth >= expBookMinDepth)
             {
-                Depth expBookMinDepth = (Depth) options["Experience Book Min Depth"];
-                std::vector<LearningMove*> learningMoves = LD.probe(rootPos.key());
-                if (!learningMoves.empty())
-                {
-                    LD.sortLearningMoves(learningMoves);
-                    std::vector<LearningMove*> bestMoves;
-                    Depth                      bestDepth = learningMoves[0]->depth;
-                    if (bestDepth >= expBookMinDepth)
-                    {
-                        int   bestPerformance = learningMoves[0]->performance;
-                        Value bestScore       = learningMoves[0]->score;
-                        if (bestPerformance >= 50)
-                        {
-                            for (const auto& move : learningMoves)
-                            {
-                                if (move->depth == bestDepth && move->performance == bestPerformance
-                                    && move->score == bestScore)
-                    {
-                        bestMoves.push_back(move);
-                    }
-                    else
-                    {
-                        break;
-                    }
+                int bestPerformance = learningMoves[0]->performance;
+                Value bestScore = learningMoves[0]->score;
+
+                if ((bool)options["Experience Book Logging"]) {
+                    std::cout << "info string Filtered best moves based on performance and score"
+                              << std::endl;
                 }
-                // Qui non viene più effettuata la selezione casuale
-                if (!bestMoves.empty())
+
+                if (bestPerformance >= 50)
                 {
-                    bookMove = bestMoves[0]->move; // Usa semplicemente la prima mossa disponibile
-                            }
+                    for (const auto& move : learningMoves)
+                    {
+                        if (move->depth == bestDepth && move->performance == bestPerformance
+                            && move->score == bestScore)
+                        {
+                            bestMoves.push_back(move);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+
+                    if ((bool)options["Experience Book Logging"]) {
+                        std::cout << "info string Filtered " << bestMoves.size()
+                                  << " best moves from experience book." << std::endl;
+                    }
+
+                    // Random selection from the best moves
+                    if (!bestMoves.empty())
+                    {
+                        std::random_device rd;
+                        std::mt19937 gen(rd());
+                        std::uniform_int_distribution<> dis(0, bestMoves.size() - 1);
+                        bookMove = bestMoves[dis(gen)]->move;
+
+                        if ((bool)options["Experience Book Logging"]) {
+                            std::cout << "info string Selected a move from experience book"
+                                      << std::endl;
                         }
                     }
                 }
             }
-            //Probe experience book end
-            if (bookMove != Move::none()
-                && std::find(rootMoves.begin(), rootMoves.end(), bookMove) != rootMoves.end())
-            {
-                think = false;
-
-                for (auto&& th : threads)
-                    std::swap(th->worker->rootMoves[0],
-                              *std::find(th->worker->rootMoves.begin(), th->worker->rootMoves.end(),
-                                         bookMove));
-            }
-        }
-        if (!bookMove && think)
-        {
-            threads.start_searching();  // start non-main threads
-            iterative_deepening();      // main thread start searching
         }
     }
+    // Probe experience book end
+
+    if (bookMove != Move::none()
+        && std::find(rootMoves.begin(), rootMoves.end(), bookMove) != rootMoves.end())
+    {
+        think = false;
+
+        for (auto&& th : threads)
+        {
+            std::swap(th->worker->rootMoves[0],
+                      *std::find(th->worker->rootMoves.begin(), th->worker->rootMoves.end(),
+                                 bookMove));
+        }
+
+        if ((bool)options["Experience Book Logging"]) {
+            std::cout << "info string Book move applied" << std::endl;
+        }
+    }
+    else
+    {
+        if ((bool)options["Experience Book Logging"]) {
+            if (bookMove == Move::none())
+                std::cout << "info string No move selected from experience book." << std::endl;
+            else
+                std::cout << "info string Experience book move not valid in current root moves."
+                          << std::endl;
+        }
+    }
+}
+
+if (!bookMove && think)
+{
+    threads.start_searching();  // start non-main threads
+    iterative_deepening();      // main thread start searching
+    }
+}
 
     // When we reach the maximum depth, we can arrive here without a raise of
     // threads.stop. However, if we are pondering or in an infinite search,

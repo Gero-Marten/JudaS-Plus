@@ -169,12 +169,32 @@ Engine::Engine(std::optional<std::string> path) :
         LD.set_learning_mode(get_options(), (bool) o ? "Self" : "Standard");
         return std::nullopt;
     });
-    options["Experience Book"] << Option(false, [this](const Option&) {
+    options["Experience Book"] << Option(false, [this](const Option& opt) {
+    bool enabled = opt;
+    
+    // Send a message to the GUI to notify the enable/disable status
+    std::cout << "info string Experience Book " 
+              << (enabled ? "enabled" : "disabled") << std::endl;
+    
+    // Initialize LD only if option is enabled
+    if (enabled) {
         LD.init(get_options());
-        return std::nullopt;
-    });
-    options["Experience Book Max Moves"] << Option(100, 1, 100);
-    options["Experience Book Min Depth"] << Option(4, 1, 255);
+    }
+    return std::nullopt;
+});
+
+options["Experience Book Max Moves"] << Option(100, 1, 100);
+options["Experience Book Min Depth"] << Option(4, 1, 255);
+options["Experience Book Logging"] << Option(false, [](const Option& opt) {
+    bool enabled = opt;
+
+    // Send a message to the GUI to notify the enable/disable status
+    std::cout << "info string Experience Book Logging "
+              << (enabled ? "enabled" : "disabled") << std::endl;
+
+    return std::nullopt;
+});
+
     options["Concurrent Experience"]
       << Option(false);
     load_networks();
