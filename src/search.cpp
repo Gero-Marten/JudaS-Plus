@@ -247,6 +247,7 @@ if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.p
         && rootPos.game_ply() / 2 < (int)options["Experience Book Max Moves"])
     {
         Depth expBookMinDepth = (Depth)options["Experience Book Min Depth"];
+        int minPerformance = (int)options["Experience Book Min Performance"]; // New threshold
         std::vector<LearningMove*> learningMoves = LD.probe(rootPos.key());
 
         if ((bool)options["Experience Book Logging"]) {
@@ -254,7 +255,6 @@ if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.p
             std::cout << "info string Found " << learningMoves.size()
                       << " learning moves." << std::endl;
         }
-
 
         if (!learningMoves.empty())
         {
@@ -265,47 +265,49 @@ if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.p
 
             if (bestDepth >= expBookMinDepth)
             {
-                int bestPerformance = learningMoves[0]->performance;
                 Value bestScore = learningMoves[0]->score;
 
                 if ((bool)options["Experience Book Logging"]) {
-                    std::cout << "info string Filtering moves based on performance >= 30 and score..."
-                              << std::endl;
+                    std::cout << "info string Filtering moves with performance >= "
+                              << minPerformance << " and score..." << std::endl;
                 }
 
-                // Reduced minimum performance threshold
-                if (bestPerformance >= 30)
+                // Move filter with detailed log
+                for (const auto& move : learningMoves)
                 {
-                    for (const auto& move : learningMoves)
+                    if (move->depth == bestDepth && move->performance >= minPerformance
+                        && move->score == bestScore)
                     {
-                        if (move->depth == bestDepth && move->performance >= 30
-                            && move->score == bestScore)
-                        {
-                            bestMoves.push_back(move);
-                        }
-                        else
-                        {
-                            break;
+                        bestMoves.push_back(move);
+                        if ((bool)options["Experience Book Logging"]) {
+                            std::cout << "info string Move accepted: Depth=" << move->depth
+                                      << ", Performance=" << move->performance
+                                      << ", Score=" << move->score << std::endl;
                         }
                     }
-
-                if ((bool)options["Experience Book Logging"]) {
-                        std::cout << "info string Filtered " << bestMoves.size()
-                                  << " best moves from experience book." << std::endl;
+                    else if ((bool)options["Experience Book Logging"]) {
+                        std::cout << "info string Move rejected: Depth=" << move->depth
+                                  << ", Performance=" << move->performance
+                                  << ", Score=" << move->score << std::endl;
+                    }
                 }
 
-                    // Random selection from the best moves
-                    if (!bestMoves.empty())
-                    {
-                        std::random_device rd;
-                        std::mt19937 gen(rd());
-                        std::uniform_int_distribution<> dis(0, bestMoves.size() - 1);
-                        bookMove = bestMoves[dis(gen)]->move;
+                if ((bool)options["Experience Book Logging"]) {
+                    std::cout << "info string Filtered " << bestMoves.size()
+                              << " best moves from experience book." << std::endl;
+                }
 
-                        if ((bool)options["Experience Book Logging"]) {
-                            std::cout << "info string Selected a move from experience book"
-                                      << std::endl;
-                        }
+                // Random selection from the best moves
+                if (!bestMoves.empty())
+                {
+                    std::random_device rd;
+                    std::mt19937 gen(rd());
+                    std::uniform_int_distribution<> dis(0, bestMoves.size() - 1);
+                    bookMove = bestMoves[dis(gen)]->move;
+
+                    if ((bool)options["Experience Book Logging"]) {
+                        std::cout << "info string Selected a move from experience book"
+                                  << std::endl;
                     }
                 }
             }

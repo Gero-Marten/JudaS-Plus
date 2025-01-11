@@ -185,6 +185,7 @@ Engine::Engine(std::optional<std::string> path) :
 
 options["Experience Book Max Moves"] << Option(100, 1, 100);
 options["Experience Book Min Depth"] << Option(4, 1, 255);
+options["Experience Book Min Performance"] << Option(30, 0, 100); // Default: 30
 options["Experience Book Logging"] << Option(false, [](const Option& opt) {
     bool enabled = opt;
 
