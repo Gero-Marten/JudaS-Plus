@@ -248,6 +248,7 @@ if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.p
     {
         Depth expBookMinDepth = (Depth)options["Experience Book Min Depth"];
         int minPerformance = (int)options["Experience Book Min Performance"]; // New threshold
+        int bookWidth = (int)options["Experience Book Width"]; // New width option
         std::vector<LearningMove*> learningMoves = LD.probe(rootPos.key());
 
         if ((bool)options["Experience Book Logging"]) {
@@ -269,20 +270,29 @@ if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.p
 
                 if ((bool)options["Experience Book Logging"]) {
                     std::cout << "info string Filtering moves with performance >= "
-                              << minPerformance << " and score..." << std::endl;
+                              << minPerformance << " and score, limiting to width=" << bookWidth
+                              << "..." << std::endl;
                 }
 
-                // Move filter with detailed log
+                // Move filter with width limitation and detailed log
+                int count = 0;
                 for (const auto& move : learningMoves)
                 {
                     if (move->depth == bestDepth && move->performance >= minPerformance
                         && move->score == bestScore)
                     {
                         bestMoves.push_back(move);
+                        count++;
+
                         if ((bool)options["Experience Book Logging"]) {
                             std::cout << "info string Move accepted: Depth=" << move->depth
                                       << ", Performance=" << move->performance
                                       << ", Score=" << move->score << std::endl;
+                        }
+
+                        // Respect the maximum width
+                        if (count >= bookWidth) {
+                            break;
                         }
                     }
                     else if ((bool)options["Experience Book Logging"]) {
