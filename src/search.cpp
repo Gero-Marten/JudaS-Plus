@@ -242,13 +242,14 @@ if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.p
     // Probe the configured books
     bookMove = bookMan.probe(rootPos, options);
 
-    // Probe experience book begin
+    // Probe experience book
     if (bookMove == Move::none() && (bool)options["Experience Book"]
         && rootPos.game_ply() / 2 < (int)options["Experience Book Max Moves"])
     {
         Depth expBookMinDepth = (Depth)options["Experience Book Min Depth"];
-        int minPerformance = (int)options["Experience Book Min Performance"]; // New threshold
+        int minPerformance = (int)options["Experience Book Min Performance"]; // Threshold
         int bookWidth = (int)options["Experience Book Width"]; // New width option
+        int minWinProbability = (int)options["Experience Book Min Win Probability"]; // Win Probability
         std::vector<LearningMove*> learningMoves = LD.probe(rootPos.key());
 
         if ((bool)options["Experience Book Logging"]) {
@@ -263,23 +264,25 @@ if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.p
 
             std::vector<LearningMove*> bestMoves;
             Depth bestDepth = learningMoves[0]->depth;
+            Value bestScore = learningMoves[0]->score;
 
             if (bestDepth >= expBookMinDepth)
             {
-                Value bestScore = learningMoves[0]->score;
-
-                if ((bool)options["Experience Book Logging"]) {
+               if ((bool)options["Experience Book Logging"]) {
                     std::cout << "info string Filtering moves with performance >= "
-                              << minPerformance << " and score, limiting to width=" << bookWidth
-                              << "..." << std::endl;
+                              << minPerformance << ", Min Win Probability >= " << minWinProbability
+                              << ", and score == " << bestScore
+                              << ", limiting to width=" << bookWidth << "..." << std::endl;
                 }
 
                 // Move filter with width limitation and detailed log
                 int count = 0;
                 for (const auto& move : learningMoves)
                 {
+                    int winProb = WDLModel::get_win_probability(move->score, rootPos);
+
                     if (move->depth == bestDepth && move->performance >= minPerformance
-                        && move->score == bestScore)
+                        && winProb >= minWinProbability && move->score == bestScore)
                     {
                         bestMoves.push_back(move);
                         count++;
@@ -287,6 +290,7 @@ if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.p
                         if ((bool)options["Experience Book Logging"]) {
                             std::cout << "info string Move accepted: Depth=" << move->depth
                                       << ", Performance=" << move->performance
+                                      << ", Win Probability=" << winProb
                                       << ", Score=" << move->score << std::endl;
                         }
 
@@ -298,6 +302,7 @@ if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.p
                     else if ((bool)options["Experience Book Logging"]) {
                         std::cout << "info string Move rejected: Depth=" << move->depth
                                   << ", Performance=" << move->performance
+                                  << ", Win Probability=" << winProb
                                   << ", Score=" << move->score << std::endl;
                     }
                 }
