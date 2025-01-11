@@ -183,10 +183,10 @@ Engine::Engine(std::optional<std::string> path) :
     return std::nullopt;
 });
 
-options["Experience Book Max Moves"] << Option(100, 1, 100);
-options["Experience Book Min Depth"] << Option(4, 1, 255);
-options["Experience Book Min Performance"] << Option(30, 0, 100); // Default: 30
-options["Experience Book Width"] << Option(3, 1, 10);
+options["Experience Book Max Moves"] << Option(20, 1, 50); // Default: 20, Range: 1-50
+options["Experience Book Min Depth"] << Option(6, 1, 40);  // Default: 6, Range: 1-40
+options["Experience Book Width"] << Option(3, 1, 10);      // Default: 3, Range: 1-10
+options["Experience Book Min Performance"] << Option(30, 10, 100); // Default: 30, Range: 10-100
 options["Experience Book Logging"] << Option(false, [](const Option& opt) {
     bool enabled = opt;
     // Send a message to the GUI to notify the enable/disable status
