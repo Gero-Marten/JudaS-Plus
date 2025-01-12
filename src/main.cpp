@@ -17,6 +17,8 @@
 */
 
 #include <iostream>
+#include <exception>
+#include <iomanip>
 
 #include "bitboard.h"
 #include "misc.h"
@@ -30,19 +32,60 @@
 using namespace Judas;
 
 int main(int argc, char* argv[]) {
+    try {
+        std::cout << "==========================================" << std::endl;
+        std::cout << engine_info() << std::endl;
+        std::cout << "Compiled: " << __DATE__ << " " << __TIME__ << std::endl;
+        std::cout << "==========================================" << std::endl;
 
-    std::cout << engine_info() << std::endl;
+        WDLModel::init();
+        Bitboards::init();
+        Position::init();
 
-    WDLModel::init();
+        UCIEngine uci(argc, argv);
+        LD.init(uci.engine_options());
+        Tune::init(uci.engine_options());
 
-    Bitboards::init();
-    Position::init();
+        // Probing the experience file
+        if ((bool)uci.engine_options()["Experience Book"]) {
+            std::cout << "\n*** Probing Experience Book ***\n" << std::endl;
+            try {
+                // View the contents of the experience file
+                const auto& expTable = LD.get_table();
+                size_t entryCount = 0;
 
-    UCIEngine uci(argc, argv);
-    LD.init(uci.engine_options());
-    Tune::init(uci.engine_options());
+                for (const auto& [key, move] : expTable) {
+                    entryCount++;
+                    std::cout << "Entry " << entryCount << ": Key=" << key
+                              << ", Score=" << move->score
+                              << ", Depth=" << move->depth
+                              << ", Performance=" << static_cast<int>(move->performance)
+                              << std::endl;
 
-    uci.loop();
+                    if (entryCount >= 10) { // Limit to 10 entries to avoid too much output
+                        std::cout << "...and more entries in the table..." << std::endl;
+                        break;
+                    }
+                }
+
+                std::cout << "\nTotal entries in experience book: " << entryCount << "\n" << std::endl;
+            } catch (const std::exception& e) {
+                std::cerr << "Error accessing experience book: " << e.what() << std::endl;
+            }
+        } else {
+            std::cout << "\nExperience book is disabled.\n" << std::endl;
+        }
+
+        // Entering UCI mode
+        uci.loop();
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error during initialization: " << e.what() << std::endl;
+        return 1;
+    } catch (...) {
+        std::cerr << "Unknown error during initialization." << std::endl;
+        return 1;
+    }
 
     return 0;
 }

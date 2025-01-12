@@ -86,6 +86,9 @@ class LearningData {
     std::vector<LearningMove*> probe(Judas::Key key);
     static void                sortLearningMoves(std::vector<LearningMove*>& learningMoves);
     static void                show_exp(const Judas::Position& pos);
+
+    // Added method to access table
+    const auto& get_table() const { return HT; }
 };
 
 extern LearningData LD;
