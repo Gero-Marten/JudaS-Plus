@@ -165,9 +165,19 @@ Engine::Engine(std::optional<std::string> path) :
         LD.set_readonly(o);
         return std::nullopt;
     });
-    options["Self Q-learning"] << Option(false, [this](const Option& o) {
-        LD.set_learning_mode(get_options(), (bool) o ? "Self" : "Standard");
-        return std::nullopt;
+    options["Learning Mode"] << Option("Off var Off var Experience var Self", "Off",
+                                       [this](const Option& o) -> std::optional<std::string> {
+                                           if (o == "Off") {
+                                               sync_cout << "info string Learning Mode disabled." << sync_endl;
+                                               LD.set_learning_mode(get_options(), o);  // Disabilita la modalità
+                                           } else if (o == "Experience") {
+                                               sync_cout << "info string Learning Mode set to 'Experience'." << sync_endl;
+                                               LD.set_learning_mode(get_options(), o);  // Abilita Experience
+                                           } else if (o == "Self") {
+                                               sync_cout << "info string Learning Mode set to 'Self' (Q-learning)." << sync_endl;
+                                               LD.set_learning_mode(get_options(), o);  // Abilita Q-learning
+                                           }
+                                           return std::optional<std::string>{};
     });
     options["Experience Book"] << Option(true, [this](const Option& opt) {
     bool enabled = opt;
@@ -187,7 +197,7 @@ options["Experience Book Max Moves"] << Option(20, 1, 50); // Default: 20, Range
 options["Experience Book Min Depth"] << Option(6, 1, 40);  // Default: 6, Range: 1-40
 options["Experience Book Width"] << Option(3, 1, 10);      // Default: 3, Range: 1-10
 options["Experience Book Min Performance"] << Option(30, 10, 100); // Default: 30, Range: 10-100
-options["Experience Book Min Win Probability"] << Option(30, 0, 100, [](const Option& opt) {
+options["Experience Book Min Win Probability"] << Option(20, 10, 100, [](const Option& opt) { // Default: 20, Range: 10-100
     std::cout << "info string Experience Book Min Win Probability set to "
               << opt << std::endl;
     return std::nullopt;

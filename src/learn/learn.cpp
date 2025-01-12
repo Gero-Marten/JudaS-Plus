@@ -216,7 +216,7 @@ LearningData::LearningData() :
     isPaused(false),
     isReadOnly(false),
     needPersisting(false),
-    learningMode(LearningMode::Standard) {}
+    learningMode(LearningMode::Off) {}
 
 LearningData::~LearningData() { clear(); }
 
@@ -242,8 +242,10 @@ void LearningData::clear() {
 void LearningData::init(Judas::OptionsMap& o) {
     OptionsMap& options = o;
     clear();
-    learningMode =
-      identify_learning_mode(static_cast<bool>(options["Self Q-learning"]) ? "Self" : "Standard");
+
+    learningMode = identify_learning_mode(options["Learning Mode"]);
+    if ((learningMode == LearningMode::Off) && !((bool) options["Experience Book"]))
+        return;
 
     load(Util::map_path("JudaS.exp"));
 
