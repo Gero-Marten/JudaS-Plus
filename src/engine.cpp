@@ -165,7 +165,8 @@ Engine::Engine(std::optional<std::string> path) :
         LD.set_readonly(o);
         return std::nullopt;
     });
-    options["Learning Mode"] << Option("Off var Off var Experience var Self", "Off",
+//   options["Learning Mode"] << Option("Off var Off var Experience var Self", "Off",
+    options["Learning Mode"] << Option("Experience var Experience var Self", "Experience",
                                        [this](const Option& o) -> std::optional<std::string> {
                                            if (o == "Off") {
                                                sync_cout << "info string Learning Mode disabled." << sync_endl;
@@ -197,7 +198,7 @@ options["Experience Book Max Moves"] << Option(20, 1, 50); // Default: 20, Range
 options["Experience Book Min Depth"] << Option(6, 1, 40);  // Default: 6, Range: 1-40
 options["Experience Book Width"] << Option(3, 1, 10);      // Default: 3, Range: 1-10
 options["Experience Book Min Performance"] << Option(30, 10, 100); // Default: 30, Range: 10-100
-options["Experience Book Min Win Probability"] << Option(20, 10, 100, [](const Option& opt) { // Default: 20, Range: 10-100
+options["Experience Book Min Win Probability"] << Option(50, 10, 100, [](const Option& opt) { // Default: 20, Range: 10-100
     std::cout << "info string Experience Book Min Win Probability set to "
               << opt << std::endl;
     return std::nullopt;
