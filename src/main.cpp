@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
                               << ", Performance=" << static_cast<int>(move->performance)
                               << std::endl;
 
-                    if (entryCount >= 10) { // Limit to 10 entries to avoid too much output
+                    if (entryCount >= 3) { // Limit to 10 entries to avoid too much output
                         std::cout << "...and more entries in the table..." << std::endl;
                         break;
                     }
