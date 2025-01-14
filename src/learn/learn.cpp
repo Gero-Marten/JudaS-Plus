@@ -33,14 +33,12 @@ using namespace Judas;
 LearningData LD;
 
 namespace {
-LearningMode identify_learning_mode(const string& lm) {
-    if (lm == "Off")
-        return LearningMode::Off;
+LearningMode identify_learning_mode(const std::string& lm) {
+    if (lm == "Experience") {
+        return LearningMode::Experience;
+    }
 
-    if (lm == "Standard")
-        return LearningMode::Standard;
-
-    return LearningMode::Self;
+    return LearningMode::Self; // Default value if not "Experience"
 }
 }
 
@@ -216,10 +214,12 @@ LearningData::LearningData() :
     isPaused(false),
     isReadOnly(false),
     needPersisting(false),
-    learningMode(LearningMode::Off) {}
+    learningMode(LearningMode::Experience) // Imposta la modalità predefinita su Experience
+{}
 
-LearningData::~LearningData() { clear(); }
-
+LearningData::~LearningData() {
+    clear();
+}
 void LearningData::clear() {
     //Clear hash table
     HT.clear();
@@ -240,12 +240,23 @@ void LearningData::clear() {
 }
 
 void LearningData::init(Judas::OptionsMap& o) {
-    OptionsMap& options = o;
-    clear();
+    OptionsMap& options = o; // Assegna la mappa delle opzioni
+    clear();                // Pulisce i dati di apprendimento esistenti
 
-    learningMode = identify_learning_mode(options["Learning Mode"]);
-    if ((learningMode == LearningMode::Off) && !((bool) options["Experience Book"]))
+    learningMode = identify_learning_mode(options["Learning Mode"]); // Identifica la modalità
+
+    // Se la modalità è disabilitata e il libro esperienza non è abilitato, termina
+    if (learningMode == LearningMode::Experience && !((bool)options["Experience Book"])) {
+        sync_cout << "info string Learning Mode is 'Experience', but Experience Book is disabled." << sync_endl;
         return;
+    }
+
+    // Carica i dati di apprendimento persistenti
+    load(Util::map_path("JudaS.exp"));
+
+    // Log di completamento (opzionale)
+    sync_cout << "info string LearningData initialized with mode: "
+              << (learningMode == LearningMode::Experience ? "Experience" : "Unknown") << sync_endl;
 
     load(Util::map_path("JudaS.exp"));
 

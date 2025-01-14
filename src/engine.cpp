@@ -165,13 +165,9 @@ Engine::Engine(std::optional<std::string> path) :
         LD.set_readonly(o);
         return std::nullopt;
     });
-//   options["Learning Mode"] << Option("Off var Off var Experience var Self", "Off",
-    options["Learning Mode"] << Option("Experience var Experience var Self", "Experience",
+    options["Learning Mode"] << Option("Experience var Self", "Experience",
                                        [this](const Option& o) -> std::optional<std::string> {
-                                           if (o == "Off") {
-                                               sync_cout << "info string Learning Mode disabled." << sync_endl;
-                                               LD.set_learning_mode(get_options(), o);  // Disabilita la modalità
-                                           } else if (o == "Experience") {
+                                           if (o == "Experience") {
                                                sync_cout << "info string Learning Mode set to 'Experience'." << sync_endl;
                                                LD.set_learning_mode(get_options(), o);  // Abilita Experience
                                            } else if (o == "Self") {

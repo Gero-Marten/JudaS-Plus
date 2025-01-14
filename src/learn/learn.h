@@ -25,9 +25,8 @@
 #include "../position.h"
 
 enum class LearningMode {
-    Off      = 1,
-    Standard = 2,
-    Self     = 3,
+    Experience = 1, // Experience Mode
+    Self       = 2  // Self Mode (Q-learning)
 };
 
 struct LearningMove {
@@ -68,9 +67,9 @@ class LearningData {
     [[nodiscard]] bool is_paused() const { return isPaused; };
 
     void quick_reset_exp();
-  void set_learning_mode(Judas::OptionsMap& options, const std::string& lm);
+    void set_learning_mode(Judas::OptionsMap& options, const std::string& lm);
     [[nodiscard]] LearningMode learning_mode() const;
-    [[nodiscard]] bool         is_enabled() const { return learningMode != LearningMode::Off; }
+    [[nodiscard]] bool is_enabled() const { return learningMode == LearningMode::Experience; }
 
     void               set_readonly(bool ro) { isReadOnly = ro; }
     [[nodiscard]] bool is_readonly() const { return isReadOnly; }
