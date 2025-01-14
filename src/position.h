@@ -177,6 +177,10 @@ class Position {
     Value non_pawn_material(Color c) const;
     Value non_pawn_material() const;
 
+    // New methods for depth and evaluation
+    int calculate_depth() const;        // Calculate the current search depth
+    int evaluate_position() const;     // Calculate the current evaluation score
+
     // Position consistency check, for debugging
     bool pos_is_ok() const;
     void flip();

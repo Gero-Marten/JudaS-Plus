@@ -26,7 +26,6 @@
 #include "types.h"
 #include "uci.h"
 #include "tune.h"
-#include "win_probability.h"
 #include "learn/learn.h"
 
 using namespace Judas;
@@ -38,7 +37,6 @@ int main(int argc, char* argv[]) {
         std::cout << "Compiled: " << __DATE__ << " " << __TIME__ << std::endl;
         std::cout << "==========================================" << std::endl;
 
-        WDLModel::init();
         Bitboards::init();
         Position::init();
 
@@ -56,10 +54,15 @@ int main(int argc, char* argv[]) {
 
                 for (const auto& [key, move] : expTable) {
                     entryCount++;
+                    
+                    // Calcolo dinamico di Quality
+                    const int Quality = std::clamp(move->depth * 10 + (move->score / 100), 0, 100);
+
                     std::cout << "Entry " << entryCount << ": Key=" << key
                               << ", Score=" << move->score
                               << ", Depth=" << move->depth
                               << ", Performance=" << static_cast<int>(move->performance)
+                              << ", Quality=" << Quality // Aggiunto Quality
                               << std::endl;
 
                     if (entryCount >= 3) { // Limit to 10 entries to avoid too much output

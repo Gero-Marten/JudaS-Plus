@@ -52,7 +52,6 @@
 #include "types.h"
 #include "uci.h"
 #include "ucioption.h"
-#include "win_probability.h"
 #include "learn/learn.h"
 
 namespace Judas {
@@ -249,7 +248,6 @@ if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.p
         Depth expBookMinDepth = (Depth)options["Experience Book Min Depth"];
         int minPerformance = (int)options["Experience Book Min Performance"]; // Threshold
         int bookWidth = (int)options["Experience Book Width"]; // New width option
-        int minWinProbability = (int)options["Experience Book Min Win Probability"]; // Win Probability
         std::vector<LearningMove*> learningMoves = LD.probe(rootPos.key());
 
         if ((bool)options["Experience Book Logging"]) {
@@ -258,71 +256,72 @@ if (!(limits.infinite || limits.mate || limits.depth || limits.nodes || limits.p
                       << " learning moves." << std::endl;
         }
 
-        if (!learningMoves.empty())
-        {
-            LD.sortLearningMoves(learningMoves);
+if (!learningMoves.empty())
+{
+    LD.sortLearningMoves(learningMoves);
 
-            std::vector<LearningMove*> bestMoves;
-            Depth bestDepth = learningMoves[0]->depth;
-            Value bestScore = learningMoves[0]->score;
+    std::vector<LearningMove*> bestMoves;
+    Depth bestDepth = learningMoves[0]->depth;
+    Value bestScore = learningMoves[0]->score;
 
-            if (bestDepth >= expBookMinDepth)
-            {
-               if ((bool)options["Experience Book Logging"]) {
-                    std::cout << "info string Filtering moves with performance >= "
-                              << minPerformance << ", Min Win Probability >= " << minWinProbability
-                              << ", and score == " << bestScore
-                              << ", limiting to width=" << bookWidth << "..." << std::endl;
-                }
+    const int minQuality = (int)options["Experience Book Min Quality"]; // Aggiunto
 
-                // Move filter with width limitation and detailed log
-                int count = 0;
-                for (const auto& move : learningMoves)
-                {
-                    int winProb = WDLModel::get_win_probability(move->score, rootPos);
+    if (bestDepth >= expBookMinDepth)
+    {
+        if ((bool)options["Experience Book Logging"]) {
+            std::cout << "info string Filtering moves with performance >= "
+                      << minPerformance
+                      << ", and score == " << bestScore
+                      << ", limiting to width=" << bookWidth << "..." << std::endl;
+        }
+// Move filter with width limitation and detailed log
+int count = 0;
+for (const auto& move : learningMoves) {
+    // Dynamic calculation of "Quality"
+    const int Quality = std::clamp(move->depth * 10 + (move->score / 100), 0, 100);
 
-                    if (move->depth == bestDepth && move->performance >= minPerformance
-                        && winProb >= minWinProbability && move->score == bestScore)
-                    {
-                        bestMoves.push_back(move);
-                        count++;
+    if (move->depth == bestDepth && move->performance >= minPerformance
+        && Quality >= minQuality && move->score == bestScore)
+    {
+        bestMoves.push_back(move);
+        count++;
 
-                        if ((bool)options["Experience Book Logging"]) {
-                            std::cout << "info string Move accepted: Depth=" << move->depth
-                                      << ", Performance=" << move->performance
-                                      << ", Win Probability=" << winProb
-                                      << ", Score=" << move->score << std::endl;
-                        }
+        if ((bool)options["Experience Book Logging"]) {
+            std::cout << "info string Move accepted: Depth=" << move->depth
+                      << ", Performance=" << move->performance
+                      << ", Quality=" << Quality
+                      << ", Score=" << move->score << std::endl;
+        }
 
-                        // Respect the maximum width
-                        if (count >= bookWidth) {
-                            break;
-                        }
-                    }
-                    else if ((bool)options["Experience Book Logging"]) {
-                        std::cout << "info string Move rejected: Depth=" << move->depth
-                                  << ", Performance=" << move->performance
-                                  << ", Win Probability=" << winProb
-                                  << ", Score=" << move->score << std::endl;
-                    }
-                }
+        // Respect the maximum width
+        if (count >= bookWidth) {
+            break; // Questo è valido perché siamo dentro un ciclo `for`
+        }
+    }
+    else if ((bool)options["Experience Book Logging"]) {
+        std::cout << "info string Move rejected: Depth=" << move->depth
+                  << ", Performance=" << move->performance
+                  << ", Quality=" << Quality
+                  << ", Score=" << move->score << std::endl;
+    }
+}
 
-                if ((bool)options["Experience Book Logging"]) {
-                    std::cout << "info string Filtered " << bestMoves.size()
-                              << " best moves from experience book." << std::endl;
-                }
+if ((bool)options["Experience Book Logging"]) {
+    std::cout << "info string Filtered " << bestMoves.size()
+              << " best moves from experience book." << std::endl;
+}
 
-                // Random selection from the best moves
-                if (!bestMoves.empty())
-                {
-                    std::random_device rd;
-                    std::mt19937 gen(rd());
-                    std::uniform_int_distribution<> dis(0, bestMoves.size() - 1);
-                    bookMove = bestMoves[dis(gen)]->move;
+// Random selection from the best moves
+if (!bestMoves.empty())
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, bestMoves.size() - 1);
+    bookMove = bestMoves[dis(gen)]->move;
 
-                    if ((bool)options["Experience Book Logging"]) {
-                        std::cout << "info string Selected a move from experience book"
-                                  << std::endl;
+    if ((bool)options["Experience Book Logging"]) {
+        std::cout << "info string Selected a move from experience book" 
+		          << std::endl;
                     }
                 }
             }
@@ -398,42 +397,50 @@ if (!bookMove && think)
     main_manager()->bestPreviousScore        = bestThread->rootMoves[0].score;
     main_manager()->bestPreviousAverageScore = bestThread->rootMoves[0].averageScore;
 
-    if (!bookMove)
+if (!bookMove)
+{
+    if (bestThread->completedDepth > 4 && LD.is_enabled() && !LD.is_paused())
     {
-        if (bestThread->completedDepth > 4 && LD.is_enabled() && !LD.is_paused())
-        {
-            PersistedLearningMove plm;
-            plm.key                = rootPos.key();
-            plm.learningMove.depth = bestThread->completedDepth;
-            plm.learningMove.move  = bestThread->rootMoves[0].pv[0];
-            plm.learningMove.score = bestThread->rootMoves[0].score;
-            plm.learningMove.performance =
-              WDLModel::get_win_probability(bestThread->rootMoves[0].score, rootPos);
+        PersistedLearningMove plm;
+        plm.key                = rootPos.key();
+        plm.learningMove.depth = bestThread->completedDepth;
+        plm.learningMove.move  = bestThread->rootMoves[0].pv[0];
+        plm.learningMove.score = bestThread->rootMoves[0].score;
 
-            if (LD.learning_mode() == LearningMode::Self)
-            {
-                const LearningMove* existingMove = LD.probe_move(plm.key, plm.learningMove.move);
-                if (existingMove)
-                    plm.learningMove.score = existingMove->score;
-                QLearningMove qLearningMove;
-                qLearningMove.persistedLearningMove = plm;
-                const int qLearningMoveMaterial =
-                  rootPos.count<PAWN>() + 3 * rootPos.count<KNIGHT>() + 3 * rootPos.count<BISHOP>()
-                  + 5 * rootPos.count<ROOK>() + 9 * rootPos.count<QUEEN>();
-                const int qLearningMoveMaterialClamp = std::clamp(qLearningMoveMaterial, 17, 78);
-                qLearningMove.materialClamp          = qLearningMoveMaterialClamp;
-                qLearningTrajectory.push_back(qLearningMove);
-            }
-            else
-            {
-                LD.add_new_learning(plm.key, plm.learningMove);
-            }
-        }
-        if (!enabledLearningProbe)
+        // Calcolo dinamico di "performance"
+        plm.learningMove.performance = std::clamp(
+            bestThread->completedDepth * 10 + (bestThread->rootMoves[0].score / 100), 0, 100
+        );
+
+        if (LD.learning_mode() == LearningMode::Self)
         {
-            useLearning = false;
+            const LearningMove* existingMove = LD.probe_move(plm.key, plm.learningMove.move);
+            if (existingMove)
+                plm.learningMove.score = existingMove->score;
+
+            QLearningMove qLearningMove;
+            qLearningMove.persistedLearningMove = plm;
+
+            // Calcolo del materiale per Q-learning
+            const int qLearningMoveMaterial =
+                rootPos.count<PAWN>() + 3 * rootPos.count<KNIGHT>() + 3 * rootPos.count<BISHOP>()
+                + 5 * rootPos.count<ROOK>() + 9 * rootPos.count<QUEEN>();
+
+            const int qLearningMoveMaterialClamp = std::clamp(qLearningMoveMaterial, 17, 78);
+            qLearningMove.materialClamp          = qLearningMoveMaterialClamp;
+            qLearningTrajectory.push_back(qLearningMove);
+        }
+        else
+        {
+            LD.add_new_learning(plm.key, plm.learningMove);
         }
     }
+
+    if (!enabledLearningProbe)
+    {
+        useLearning = false;
+    }
+}
 
     // Send again PV info if we have a new best thread
     if (bestThread != this)
@@ -2554,11 +2561,16 @@ void putQLearningTrajectoryIntoLearningTable() {
         const LearningMove currentLearningMove =
           qLearningTrajectory[index].persistedLearningMove.learningMove;
 
+        // Aggiorna il punteggio
         prevLearningMove.score = prevLearningMove.score * (1 - learning_rate)
                                + learning_rate * (gamma * currentLearningMove.score);
-        prevLearningMove.performance = WDLModel::get_win_probability_by_material(
-          prevLearningMove.score, qLearningTrajectory[index - 1].materialClamp);
 
+        // Calcolo dinamico di "performance"
+        prevLearningMove.performance = std::clamp(
+            prevLearningMove.score / 100 + qLearningTrajectory[index - 1].materialClamp / 2, 0, 100
+        );
+
+        // Aggiungi i dati aggiornati alla tabella di apprendimento
         LD.add_new_learning(qLearningTrajectory[index - 1].persistedLearningMove.key,
                             prevLearningMove);
     }

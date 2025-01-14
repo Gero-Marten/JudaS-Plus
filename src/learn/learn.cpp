@@ -25,7 +25,6 @@
 #include <cstdint>
 #include "../uci.h"
 
-#include "../win_probability.h"
 
 using namespace std;
 using namespace Judas;
@@ -323,28 +322,43 @@ void LearningData::quick_reset_exp() {
 
     std::cout << "Successfully loaded experience file" << std::endl;
 
-    int entry_count = 0;
-    for (auto& [key, learning_move] : HT)
-    {
-        entry_count++;
+int entry_count = 0;
 
-        const auto old_performance = learning_move->performance;
-        const auto new_performance =
-          WDLModel::get_win_probability(learning_move->score, learning_move->depth);
+for (auto& [key, learning_move] : HT) {
+    entry_count++;
 
-        std::cout << "Updating entry " << entry_count << "/" << total_entries << " Key " << key
-                  << "Value " << learning_move->score << "Depth " << learning_move->depth
-                  << ": old performance=" << static_cast<int>(old_performance)
-                  << ", new performance=" << static_cast<int>(new_performance) << std::endl;
+    // Calcolo dinamico di "performance"
+    // Es: Basato su depth e score per dare un'idea dell'affidabilità della mossa
+    const int new_performance = std::clamp(
+        static_cast<int>(learning_move->depth * 10 + learning_move->score / 200), 
+        0, 100
+    );
 
-        learning_move->performance = new_performance;
-    }
+    // Calcolo dinamico di "quality"
+    // Es: Combina il punteggio (score) normalizzato e la profondità
+    const int new_quality = std::clamp(
+        static_cast<int>((learning_move->score / 10.0) + (learning_move->depth * 5)), 
+        0, 100
+    );
 
-    needPersisting = true;
-    std::cout << "Finished updating performances. Total processed entries: " << entry_count
+    // Assegna i nuovi valori a "performance" e "quality"
+    learning_move->performance = new_performance;
+    // Quality può essere memorizzato separatamente o aggiunto al modello, se necessario
+
+    // Log dettagliato
+    std::cout << "Updating entry " << entry_count << "/" << total_entries
+              << " Key=" << key
+              << ", Score=" << learning_move->score
+              << ", Depth=" << learning_move->depth
+              << ", Old Performance=" << static_cast<int>(learning_move->performance)
+              << ", New Performance=" << new_performance
+              << ", New Quality=" << new_quality
               << std::endl;
 }
 
+needPersisting = true; // Segnala che i dati devono essere salvati
+std::cout << "Finished updating performances and quality. Total processed entries: " 
+          << entry_count << std::endl;
 
 void LearningData::set_learning_mode(Judas::OptionsMap& options, const string& lm) {
     LearningMode newLearningMode = identify_learning_mode(lm);
@@ -515,12 +529,14 @@ void LearningData::sortLearningMoves(std::vector<LearningMove*>& learningMoves) 
                   {
                       return a->depth > b->depth;
                   }
-                  const int winProbA = a->performance;
-                  const int winProbB = b->performance;
 
-                  if (winProbA != winProbB)
+                  // Dynamic calculation of "performance"
+                  const int perfA = std::clamp(a->depth * 10 + (a->score / 100), 0, 100);
+                  const int perfB = std::clamp(b->depth * 10 + (b->score / 100), 0, 100);
+
+                  if (perfA != perfB)
                   {
-                      return winProbA > winProbB;
+                      return perfA > perfB;
                   }
                   return a->score > b->score;
               });
@@ -550,10 +566,12 @@ void LearningData::show_exp(const Position& pos) {
     cout << endl;
     for (const auto& move : learningMoves)
     {
-        const int winProb = move->performance;
+        // Dynamic calculation of "performance"
+        const int perf = std::clamp(move->depth * 10 + (move->score / 100), 0, 100);
+
         cout << "move: " << UCIEngine::move(move->move, pos.is_chess960())
              << " depth: " << move->depth << " value: " << move->score
-             << " win probability: " << winProb << endl;
+             << " performance: " << perf << endl; // Stampiamo il nuovo "performance"
     }
     cout << sync_endl;
 }

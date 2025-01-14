@@ -39,7 +39,6 @@
 #include "types.h"
 #include "uci.h"
 #include "ucioption.h"
-#include "win_probability.h"
 #include "learn/learn.h"
 #include "book/book.h"
 
@@ -165,7 +164,7 @@ Engine::Engine(std::optional<std::string> path) :
         LD.set_readonly(o);
         return std::nullopt;
     });
-    options["Learning Mode"] << Option("Experience var Self", "Experience",
+    options["Learning Mode"] << Option("Experience var Experience var Self", "Experience",
                                        [this](const Option& o) -> std::optional<std::string> {
                                            if (o == "Experience") {
                                                sync_cout << "info string Learning Mode set to 'Experience'." << sync_endl;
@@ -194,9 +193,8 @@ options["Experience Book Max Moves"] << Option(20, 1, 50); // Default: 20, Range
 options["Experience Book Min Depth"] << Option(6, 1, 40);  // Default: 6, Range: 1-40
 options["Experience Book Width"] << Option(3, 1, 10);      // Default: 3, Range: 1-10
 options["Experience Book Min Performance"] << Option(30, 10, 100); // Default: 30, Range: 10-100
-options["Experience Book Min Win Probability"] << Option(50, 10, 100, [](const Option& opt) { // Default: 20, Range: 10-100
-    std::cout << "info string Experience Book Min Win Probability set to "
-              << opt << std::endl;
+options["Experience Book Min Quality"] << Option(50, 0, 100, [](const Option& opt) {
+    std::cout << "info string Min Quality set to " << opt << std::endl;
     return std::nullopt;
 });
 options["Experience Book Logging"] << Option(false, [](const Option& opt) {
@@ -236,7 +234,6 @@ void Engine::search_clear() {
 
     // @TODO wont work with multiple instances
     Tablebases::init(options["SyzygyPath"]);  // Free mapped files
-    WDLModel::init();                         //from learning
 }
 
 void Engine::set_on_update_no_moves(std::function<void(const Engine::InfoShort&)>&& f) {
@@ -277,11 +274,31 @@ void Engine::set_position(const std::string& fen, const std::vector<std::string>
             PersistedLearningMove persistedLearningMove;
 
             persistedLearningMove.key                      = pos.key();
-            persistedLearningMove.learningMove.depth       = 0;
-            persistedLearningMove.learningMove.move        = m;
-            persistedLearningMove.learningMove.score       = VALUE_NONE;
-            persistedLearningMove.learningMove.performance = WDLModel::get_win_probability(0, pos);
+            persistedLearningMove.learningMove.depth       = pos.calculate_depth();  // Metodo alternativo
+															   
+            persistedLearningMove.learningMove.score       = pos.evaluate_position();  // Metodo alternativo
+            
+            // Calcolo dinamico di "performance"
+            persistedLearningMove.learningMove.performance =
+                std::clamp(persistedLearningMove.learningMove.depth * 10 +
+                           (persistedLearningMove.learningMove.score / 100), 0, 100);
+
+            // Calcolo dinamico di "Quality"
+            const int Quality = std::clamp(
+                persistedLearningMove.learningMove.depth * 15 +
+                (persistedLearningMove.learningMove.score / 50), 0, 100);
+
+            // Aggiunta dei dati di apprendimento
             LD.add_new_learning(persistedLearningMove.key, persistedLearningMove.learningMove);
+
+            // (Opzionale) Log
+            if (options["Experience Book Logging"]) {
+                std::cout << "info string Added learning move: "
+                          << "Depth=" << persistedLearningMove.learningMove.depth
+                          << ", Score=" << persistedLearningMove.learningMove.score
+                          << ", Performance=" << persistedLearningMove.learningMove.performance
+                          << ", Quality=" << Quality << std::endl;
+            }
         }
         states->emplace_back();
         pos.do_move(m, states->back());

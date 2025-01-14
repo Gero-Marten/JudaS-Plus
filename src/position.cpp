@@ -32,10 +32,14 @@
 #include <utility>
 
 #include "bitboard.h"
+#include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"
 #include "nnue/nnue_common.h"
 #include "syzygy/tbprobe.h"
+#include "nnue/nnue_misc.h"
+#include "nnue/network.h"
+#include "nnue/nnue_accumulator.h"
 #include "tt.h"
 #include "uci.h"
 
@@ -2143,4 +2147,23 @@ bool Position::pos_is_ok() const {
     return true;
 }
 
+int Position::calculate_depth() const {
+    return game_ply(); // Usa il numero di mezze mosse giocate
+}
+// Calcola la profondità corrente della ricerca
+int Position::evaluate_position() const {
+    // Valutazione basata sul materiale non pedone
+    Value materialValue = this->non_pawn_material();
+    Value pawnMaterial = this->count<PAWN>(WHITE) - this->count<PAWN>(BLACK);
+
+    // Debug
+    std::cout << "Material Value (non-pawn): " << materialValue << std::endl;
+    std::cout << "Pawn Material: " << pawnMaterial << std::endl;
+
+    // Calcolo complessivo
+    Value eval = materialValue + pawnMaterial * 50;
+    std::cout << "Evaluation (centipawns): " << eval << " cp" << std::endl;
+
+    return static_cast<int>(eval);
+}
 }  // namespace Judas
